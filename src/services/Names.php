@@ -54,6 +54,46 @@ class Names extends Component
             && ($target['expiryDate'] === null || $target['expiryDate'] > $now);
     }
 
+    /**
+     * Finds the entries that go by each of the given names, by title or other
+     * name, ignoring case. Each name must match in full, so this suits lists
+     * where every item is a name, such as a line-up. Entries set to never be
+     * linked aren't found; "only where it's related" doesn't apply.
+     *
+     * @param string[] $names
+     * @return array<string, Entry> Each name that matched => its entry
+     */
+    public function findEntries(array $names, ?int $siteId = null): array
+    {
+        $siteId ??= Craft::$app->getSites()->getCurrentSite()->id;
+        $matcher = $this->getMatcher($siteId);
+
+        $ids = [];
+        foreach ($names as $name) {
+            $id = $matcher->keyFor((string)$name, true);
+            if ($id !== null) {
+                $ids[(string)$name] = $id;
+            }
+        }
+        if ($ids === []) {
+            return [];
+        }
+
+        $entries = Entry::find()
+            ->id(array_values(array_unique($ids)))
+            ->siteId($siteId)
+            ->indexBy('id')
+            ->all();
+
+        $found = [];
+        foreach ($ids as $name => $id) {
+            if (isset($entries[$id])) {
+                $found[$name] = $entries[$id];
+            }
+        }
+        return $found;
+    }
+
     public function isTarget(ElementInterface $element): bool
     {
         return $element instanceof Entry

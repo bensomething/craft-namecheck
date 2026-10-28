@@ -69,6 +69,26 @@ class MatcherTest extends TestCase
         $this->assertSame(strlen('Björk'), $matches[0]['length']);
     }
 
+    public function testKeyForMatchesWholeNamesOnly(): void
+    {
+        $matcher = new Matcher([1 => ['The Jesus and Mary Chain', 'Jesus and Mary Chain'], 2 => ["Guns N' Roses"], 3 => ['311']]);
+
+        $this->assertSame(1, $matcher->keyFor(' Jesus and Mary Chain '));
+        $this->assertSame(2, $matcher->keyFor('Guns N’ Roses'));
+        $this->assertSame(3, $matcher->keyFor('311'));
+        $this->assertNull($matcher->keyFor('Jesus'));
+        $this->assertNull($matcher->keyFor('the jesus and mary chain'));
+        $this->assertSame(1, $matcher->keyFor('the jesus and mary chain', true));
+    }
+
+    public function testKeyForIgnoringCaseDropsNamesThatOnlyDifferByCase(): void
+    {
+        $matcher = new Matcher([1 => ['MIKE'], 2 => ['Mike']]);
+
+        $this->assertSame(1, $matcher->keyFor('MIKE'));
+        $this->assertNull($matcher->keyFor('mike', true));
+    }
+
     public function testEmpty(): void
     {
         $matcher = new Matcher([1 => ['', '  ']]);

@@ -1,5 +1,11 @@
 # Release Notes for Namecheck
 
+## Unreleased
+
+### Added
+
+- `craft.namecheck.find()` and `craft.namecheck.findAll()`, which look up the entries that whole names belong to, by title or other name and ignoring case. For lists where every item is a name, such as a line-up typed as text.
+
 ## 1.0.0-beta.2 - 2026-10-28
 
 ### Fixed

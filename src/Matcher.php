@@ -23,6 +23,9 @@ class Matcher
     /** @var array<string, int> Normalised name => key */
     private array $lookup = [];
 
+    /** @var array<string, int>|null Lowercased name => key, built the first time it's needed */
+    private ?array $caselessLookup = null;
+
     /** @var string[] */
     private array $patterns = [];
 
@@ -66,6 +69,33 @@ class Matcher
     public function isEmpty(): bool
     {
         return $this->patterns === [];
+    }
+
+    /**
+     * Returns the key a whole name belongs to, for text that is a name in
+     * full (such as an item in a list) rather than text that mentions one.
+     */
+    public function keyFor(string $name, bool $ignoreCase = false): ?int
+    {
+        $normalised = $this->normalise(trim($name));
+        if (!$ignoreCase || !$this->caseSensitive) {
+            return $this->lookup[$normalised] ?? null;
+        }
+
+        if ($this->caselessLookup === null) {
+            // Names that differ only by case and belong to different keys are ambiguous.
+            $this->caselessLookup = [];
+            $ambiguous = [];
+            foreach ($this->lookup as $known => $key) {
+                $lower = mb_strtolower($known);
+                if (isset($this->caselessLookup[$lower]) && $this->caselessLookup[$lower] !== $key) {
+                    $ambiguous[$lower] = true;
+                }
+                $this->caselessLookup[$lower] = $key;
+            }
+            $this->caselessLookup = array_diff_key($this->caselessLookup, $ambiguous);
+        }
+        return $this->caselessLookup[mb_strtolower($normalised)] ?? null;
     }
 
     /**

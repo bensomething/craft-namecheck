@@ -102,6 +102,22 @@ php craft namecheck/mentions/rebuild
 
 Entries nested in Matrix or CKEditor fields count too, at any depth, whether or not their fields are searchable.
 
+## Finding Entries by Name
+
+For lists where every item is a whole name, such as a line-up typed as text, look the names up instead of linking them. A name matches an entry's title or one of its other names, ignoring case, but only in full: "Neil Young and the Chrome Hearts" won't find Neil Young.
+
+```twig
+{% set names = entry.lineupText|split(',')|map(name => name|trim) %}
+{% set found = craft.namecheck.findAll(names) %}
+
+{% for name in names %}
+    {% set performer = found[name] ?? null %}
+    {{ performer ? tag('a', { href: performer.url, text: name }) : name }}
+{% endfor %}
+```
+
+`craft.namecheck.find('Jesus and Mary Chain')` looks up a single name. Entries set to **Never** aren't found. **Only where it's related** doesn't apply here, since a name in a list is never an everyday word.
+
 ## Caches
 
 Names and links are cached until a linked entry is saved or deleted. Clear them by hand under **Utilities → Caches → Namecheck names and links**, or with `php craft clear-caches/namecheck`.
