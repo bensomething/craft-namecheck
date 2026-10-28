@@ -24,7 +24,7 @@ class Namecheck extends Field
 
     public static function icon(): string
     {
-        return 'link';
+        return 'wand';
     }
 
     public static function phpType(): string
