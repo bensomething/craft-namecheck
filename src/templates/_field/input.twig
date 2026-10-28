@@ -1,0 +1,19 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.selectField({
+    label: 'Link This Entry'|t('namecheck'),
+    instructions: 'Choose **Only where it’s related** for a name that’s also an everyday word, so it’s linked only in content that relates this entry.'|t('namecheck'),
+    id: "#{field.handle}-mode",
+    name: "#{name}[mode]",
+    value: value.mode.value,
+    options: modes|map(mode => { label: mode.label(), value: mode.value }),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Other Names'|t('namecheck'),
+    instructions: 'One per line. These are linked as well as the title.'|t('namecheck'),
+    id: "#{field.handle}-aliases",
+    name: "#{name}[aliases]",
+    value: value.aliases|join("\n"),
+    rows: 2,
+}) }}
