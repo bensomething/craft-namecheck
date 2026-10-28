@@ -56,6 +56,14 @@ The filter takes options as a third argument:
 | `attributes` | Extra attributes for each link. |
 | `exclude` | Entries (or IDs) not to link. |
 
+Content rendered in pieces counts as one piece when each call is passed the same entry. That covers a CKEditor field rendered chunk by chunk, or a body and a sidebar: an entry linked in one call isn't linked again by the next, and `limit` counts across them all.
+
+```twig
+{% for chunk in entry.body %}
+    {{ chunk.type == 'markup' ? chunk|namecheck(entry) : chunk }}
+{% endfor %}
+```
+
 Links can also be given attributes everywhere through the `linkAttributes` setting in `config/namecheck.php`.
 
 Linked HTML is cached until the content or a linked entry changes, or for Craft's `cacheDuration` at most. So a pending entry is linked once it goes live, though possibly not until that cache next expires.

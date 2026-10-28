@@ -16,10 +16,19 @@ use yii\caching\TagDependency;
 class Links extends Component
 {
     /**
+     * Entries already linked this request, per context element, so content
+     * rendered in pieces (such as CKEditor chunks) counts as one.
+     *
+     * @var array<string, int[]>
+     */
+    private array $_linked = [];
+
+    /**
      * @param mixed $html Anything that renders as HTML, such as a CKEditor field's value
      * @param ElementInterface|null $context The element the HTML belongs to. It's
      * never linked to itself, and it decides which "only where it's related"
-     * entries are linked.
+     * entries are linked. Calls with the same context share "first mention
+     * only" and `limit` for the rest of the request.
      * @param array{firstOnly?: bool, limit?: int, attributes?: array, exclude?: array} $options
      */
     public function link(mixed $html, ?ElementInterface $context = null, array $options = []): string
@@ -30,10 +39,20 @@ class Links extends Component
         }
 
         $siteId = $context->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+        $options['firstOnly'] = (bool)($options['firstOnly'] ?? Plugin::getInstance()->getSettings()->firstOnly);
         $options['exclude'] = array_map(
             fn($element) => $element instanceof ElementInterface ? $element->getCanonicalId() : (int)$element,
             (array)($options['exclude'] ?? []),
         );
+
+        $contextKey = $context ? "$context->id:$context->siteId" : null;
+        $previous = $contextKey ? ($this->_linked[$contextKey] ?? []) : [];
+        if ($options['firstOnly']) {
+            $options['exclude'] = array_values(array_unique([...$options['exclude'], ...$previous]));
+        }
+        if (isset($options['limit'])) {
+            $options['limit'] = max(0, (int)$options['limit'] - count($previous));
+        }
 
         $key = 'namecheck:links:' . md5(serialize([
             $html,
@@ -43,15 +62,23 @@ class Links extends Component
             $options,
         ]));
 
-        return Craft::$app->getCache()->getOrSet(
+        [$html, $linked] = Craft::$app->getCache()->getOrSet(
             $key,
             fn() => $this->_link($html, $siteId, $context, $options),
             null,
             new TagDependency(['tags' => [Names::CACHE_TAG]]),
         );
+
+        if ($contextKey) {
+            $this->_linked[$contextKey] = array_values(array_unique([...$previous, ...$linked]));
+        }
+        return $html;
     }
 
-    private function _link(string $html, int $siteId, ?ElementInterface $context, array $options): string
+    /**
+     * @return array{0: string, 1: int[]} The linked HTML, and the IDs of the entries it links to
+     */
+    private function _link(string $html, int $siteId, ?ElementInterface $context, array $options): array
     {
         $plugin = Plugin::getInstance();
         $settings = $plugin->getSettings();
@@ -60,7 +87,7 @@ class Links extends Component
         $matcher = $names->getMatcher($siteId);
         $targets = $names->getTargets($siteId);
 
-        $firstOnly = (bool)($options['firstOnly'] ?? $settings->firstOnly);
+        $firstOnly = $options['firstOnly'];
         $limit = isset($options['limit']) ? (int)$options['limit'] : null;
         $attributes = array_merge($settings->linkAttributes, $options['attributes'] ?? []);
         $exclude = $options['exclude'];
@@ -99,6 +126,7 @@ class Links extends Component
             return array_merge($attributes, ['href' => $target['url']]);
         };
 
-        return (new HtmlLinker($matcher, $settings->skipTags))->link($html, $resolve);
+        $html = (new HtmlLinker($matcher, $settings->skipTags))->link($html, $resolve);
+        return [$html, array_keys($linked)];
     }
 }
