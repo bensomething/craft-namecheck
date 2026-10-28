@@ -1,8 +1,8 @@
 # Namecheck for Craft CMS
 
-Link the names of your entries wherever your content mentions them, and keep track of who mentioned whom.
+Link the names of your entries wherever your content mentions them.
 
-Write "Pulp headline the Saturday" in a news story and Namecheck links "Pulp" to your Pulp page as it's rendered. Your content is never rewritten: links are added on the way out, so old articles pick up links to pages you add later, and nothing needs tidying if a page goes away.
+Write "Pulp headline the Saturday" in a news story and Namecheck links "Pulp" to your Pulp page as it's rendered. Your content is never rewritten, links are added on the way out. Old articles pick up links to pages you add later, and nothing needs tidying if a page goes away.
 
 > [!NOTE]
 > **Namecheck is in beta.** It's feature-complete and safe to try, but its API and settings may still change before 1.0.0. Please [report anything you hit](https://github.com/bensomething/craft-namecheck/issues).
