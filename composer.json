@@ -1,6 +1,6 @@
 {
     "name": "bensomething/craft-namecheck",
-    "description": "Automatically link the names of your entries wherever your content mentions them, and track who mentioned whom.",
+    "description": "Automatically link the names of your entries wherever your content mentions them.",
     "type": "craft-plugin",
     "license": "MIT",
     "keywords": [
