@@ -1,5 +1,11 @@
 # Release Notes for Namecheck
 
+## Unreleased
+
+### Fixed
+
+- Mentions in entries nested in a Matrix or CKEditor field were missed when the field holding them wasn't searchable, or when they sat more than one level down. Nested entries are now read directly, at any depth. Run `namecheck/mentions/rebuild` after updating to pick up the mentions that were missed.
+
 ## 1.0.0-beta.1 - 2026-10-28
 
 ### Added

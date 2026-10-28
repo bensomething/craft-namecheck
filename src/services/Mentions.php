@@ -7,9 +7,12 @@ use bensomething\namecheck\fields\Namecheck as NamecheckField;
 use bensomething\namecheck\Plugin;
 use Craft;
 use craft\base\Component;
+use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
 use craft\db\Query;
+use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
+use craft\elements\ElementCollection;
 use craft\elements\Entry;
 use craft\fields\BaseRelationField;
 use craft\helpers\Db;
@@ -20,6 +23,9 @@ use craft\helpers\Db;
 class Mentions extends Component
 {
     public const TABLE = '{{%namecheck_mentions}}';
+
+    /** How many levels of nested entries are read, as a guard against loops. */
+    private const MAX_DEPTH = 5;
 
     public function isSource(ElementInterface $element): bool
     {
@@ -160,16 +166,54 @@ class Mentions extends Component
 
     private function _text(ElementInterface $element): string
     {
+        // Tags become spaces to keep words in neighbouring elements apart.
+        $text = preg_replace('/<[^>]*>/', ' ', $this->_html($element));
+        return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /**
+     * An element's title and field text, with the text of any entries nested
+     * in its Matrix or CKEditor fields, however deep. Nested fields count
+     * whether or not they're searchable.
+     */
+    private function _html(ElementInterface $element, int $depth = 0): string
+    {
         $parts = [(string)$element->title];
         foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
             if ($field instanceof BaseRelationField || $field instanceof NamecheckField) {
                 continue;
             }
-            $parts[] = $field->getSearchKeywords($element->getFieldValue($field->handle), $element);
+            $value = $element->getFieldValue($field->handle);
+            $parts[] = $field instanceof ElementContainerFieldInterface
+                ? $this->_nestedHtml($value, $depth)
+                : $field->getSearchKeywords($value, $element);
+        }
+        return implode("\n", $parts);
+    }
+
+    private function _nestedHtml(mixed $value, int $depth): string
+    {
+        if ($depth >= self::MAX_DEPTH) {
+            return '';
         }
 
-        // Tags become spaces to keep words in neighbouring elements apart.
-        $text = preg_replace('/<[^>]*>/', ' ', implode("\n", $parts));
-        return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // CKEditor: its markup, with the entries embedded between it.
+        if (is_object($value) && method_exists($value, 'getChunks')) {
+            $parts = [];
+            foreach ($value->getChunks() as $chunk) {
+                $entry = method_exists($chunk, 'getEntry') ? $chunk->getEntry() : null;
+                $parts[] = $entry ? $this->_html($entry, $depth + 1) : $chunk->getHtml();
+            }
+            return implode("\n", $parts);
+        }
+
+        if ($value instanceof ElementQueryInterface || $value instanceof ElementCollection) {
+            return implode("\n", array_map(
+                fn(ElementInterface $nested) => $this->_html($nested, $depth + 1),
+                $value->all(),
+            ));
+        }
+
+        return '';
     }
 }

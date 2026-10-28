@@ -100,7 +100,7 @@ When a linked entry is added or renamed, or its other names change, mentions are
 php craft namecheck/mentions/rebuild
 ```
 
-Nested entries' fields (in Matrix or CKEditor) count when the nested field is searchable.
+Entries nested in Matrix or CKEditor fields count too, at any depth, whether or not their fields are searchable.
 
 ## Caches
 
