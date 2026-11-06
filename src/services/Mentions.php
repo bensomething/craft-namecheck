@@ -9,6 +9,7 @@ use Craft;
 use craft\base\Component;
 use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
+use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
@@ -16,6 +17,7 @@ use craft\elements\ElementCollection;
 use craft\elements\Entry;
 use craft\fields\BaseRelationField;
 use craft\helpers\Db;
+use craft\helpers\Json;
 
 /**
  * Keeps track of which entries mention which, so each side can list the other.
@@ -38,29 +40,31 @@ class Mentions extends Component
      */
     public function index(ElementInterface $element): void
     {
-        $ids = $this->findMentions($element);
+        $mentions = $this->findMentions($element);
         $sourceId = $element->getCanonicalId();
 
-        Craft::$app->getDb()->transaction(function() use ($ids, $sourceId, $element) {
+        Craft::$app->getDb()->transaction(function() use ($mentions, $sourceId, $element) {
             Db::delete(self::TABLE, [
                 'sourceId' => $sourceId,
                 'sourceSiteId' => $element->siteId,
             ]);
-            if ($ids !== []) {
-                Db::batchInsert(self::TABLE, ['sourceId', 'sourceSiteId', 'targetId'], array_map(
-                    fn(int $id) => [$sourceId, $element->siteId, $id],
-                    $ids,
-                ));
+            if ($mentions !== []) {
+                $rows = [];
+                foreach ($mentions as $targetId => $fields) {
+                    $rows[] = [$sourceId, $element->siteId, $targetId, $fields];
+                }
+                Db::batchInsert(self::TABLE, ['sourceId', 'sourceSiteId', 'targetId', 'fields'], $rows);
             }
         });
     }
 
     /**
-     * Returns the IDs of the entries an element mentions, by its title and the
-     * text of its fields. Relation fields are left out: picking an entry isn't
+     * Returns the entries an element mentions, by its title and the text of
+     * its fields, as the handles of the fields each was found in (`title` for
+     * the title). Relation fields are left out: picking an entry isn't
      * mentioning it.
      *
-     * @return int[]
+     * @return array<int, string[]> Field handles, keyed by the mentioned entry's ID
      */
     public function findMentions(ElementInterface $element): array
     {
@@ -72,8 +76,10 @@ class Mentions extends Component
         }
 
         $ids = [];
-        foreach ($matcher->find($this->_text($element)) as $match) {
-            $ids[$match['key']] = true;
+        foreach ($this->_texts($element) as $handle => $text) {
+            foreach ($matcher->find($text) as $match) {
+                $ids[$match['key']][$handle] = true;
+            }
         }
         unset($ids[$element->getCanonicalId()]);
 
@@ -88,7 +94,29 @@ class Mentions extends Component
             }
         }
 
-        return array_keys($ids);
+        return array_map(fn(array $handles) => array_map('strval', array_keys($handles)), $ids);
+    }
+
+    /**
+     * The handles of the fields each source mentions the target in, keyed by
+     * source ID, with `title` standing for the title.
+     *
+     * @param int[] $sourceIds
+     * @return array<int, string[]>
+     */
+    public function fieldsMentionedIn(ElementInterface $target, array $sourceIds): array
+    {
+        $rows = (new Query())
+            ->select(['sourceId', 'fields'])
+            ->from(self::TABLE)
+            ->where([
+                'targetId' => $target->getCanonicalId(),
+                'sourceSiteId' => $target->siteId,
+                'sourceId' => $sourceIds,
+            ])
+            ->pairs();
+
+        return array_map(fn($fields) => (array)(Json::decodeIfJson((string)$fields) ?: []), $rows);
     }
 
     /**
@@ -164,11 +192,45 @@ class Mentions extends Component
             ->andWhere(['elements.id' => $targetIds]);
     }
 
-    private function _text(ElementInterface $element): string
+    /**
+     * An element's title and the text of each of its fields, keyed by field
+     * handle. Entries nested in a field count towards that field.
+     *
+     * @return array<string, string>
+     */
+    private function _texts(ElementInterface $element): array
+    {
+        $html = ['title' => (string)$element->title];
+        foreach ($this->_searchableFields($element) as $field) {
+            $html[$field->handle] = $this->_fieldHtml($element, $field, 0);
+        }
+        return array_map(fn(string $part) => $this->_toText($part), $html);
+    }
+
+    private function _toText(string $html): string
     {
         // Tags become spaces to keep words in neighbouring elements apart.
-        $text = preg_replace('/<[^>]*>/', ' ', $this->_html($element));
+        $text = preg_replace('/<[^>]*>/', ' ', $html);
         return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /**
+     * @return FieldInterface[]
+     */
+    private function _searchableFields(ElementInterface $element): array
+    {
+        return array_filter(
+            $element->getFieldLayout()?->getCustomFields() ?? [],
+            fn(FieldInterface $field) => !$field instanceof BaseRelationField && !$field instanceof NamecheckField,
+        );
+    }
+
+    private function _fieldHtml(ElementInterface $element, FieldInterface $field, int $depth): string
+    {
+        $value = $element->getFieldValue($field->handle);
+        return $field instanceof ElementContainerFieldInterface
+            ? $this->_nestedHtml($value, $depth)
+            : (string)$field->getSearchKeywords($value, $element);
     }
 
     /**
@@ -179,14 +241,8 @@ class Mentions extends Component
     private function _html(ElementInterface $element, int $depth = 0): string
     {
         $parts = [(string)$element->title];
-        foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
-            if ($field instanceof BaseRelationField || $field instanceof NamecheckField) {
-                continue;
-            }
-            $value = $element->getFieldValue($field->handle);
-            $parts[] = $field instanceof ElementContainerFieldInterface
-                ? $this->_nestedHtml($value, $depth)
-                : $field->getSearchKeywords($value, $element);
+        foreach ($this->_searchableFields($element) as $field) {
+            $parts[] = $this->_fieldHtml($element, $field, $depth);
         }
         return implode("\n", $parts);
     }

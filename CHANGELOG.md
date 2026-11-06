@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- A **Mentioned In** panel in a linked entry's sidebar, listing the entries that mention it and the fields they mention it in.
+
 ### Changed
 
 - The Namecheck field's **Link This Entry** and **Other Names** now sit side by side.

@@ -19,6 +19,7 @@ class Install extends Migration
             'sourceId' => $this->integer()->notNull(),
             'sourceSiteId' => $this->integer()->notNull(),
             'targetId' => $this->integer()->notNull(),
+            'fields' => $this->json(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
