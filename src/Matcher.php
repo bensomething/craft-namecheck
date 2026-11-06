@@ -26,6 +26,9 @@ class Matcher
     /** @var array<string, int>|null Lowercased name => key, built the first time it's needed */
     private ?array $caselessLookup = null;
 
+    /** @var array<string, array<int, string>> Normalised name => key => name, for names claimed by more than one key */
+    private array $shared = [];
+
     /** @var string[] */
     private array $patterns = [];
 
@@ -34,27 +37,26 @@ class Matcher
      */
     public function __construct(array $names, private bool $caseSensitive = true)
     {
-        $ambiguous = [];
-        $originals = [];
-
+        /** @var array<string, array<int, string>> $claims Normalised name => key => the name as that key gives it */
+        $claims = [];
         foreach ($names as $key => $keyNames) {
             foreach ($keyNames as $name) {
                 $name = trim((string)$name);
-                if ($name === '') {
-                    continue;
+                if ($name !== '') {
+                    $claims[$this->normalise($name)][$key] ??= $name;
                 }
-                $normalised = $this->normalise($name);
-                if (isset($this->lookup[$normalised]) && $this->lookup[$normalised] !== $key) {
-                    $ambiguous[$normalised] = true;
-                    continue;
-                }
-                $this->lookup[$normalised] = $key;
-                $originals[$normalised] = $name;
             }
         }
 
-        foreach (array_keys($ambiguous) as $normalised) {
-            unset($this->lookup[$normalised], $originals[$normalised]);
+        $originals = [];
+        foreach ($claims as $normalised => $byKey) {
+            if (count($byKey) > 1) {
+                $this->shared[$normalised] = $byKey;
+                continue;
+            }
+            $key = array_key_first($byKey);
+            $this->lookup[$normalised] = $key;
+            $originals[$normalised] = $byKey[$key];
         }
 
         uasort($originals, fn(string $a, string $b) => mb_strlen($b) <=> mb_strlen($a));
@@ -64,6 +66,23 @@ class Matcher
             $alternation = implode('|', array_map(fn(string $name) => $this->quote($name), $chunk));
             $this->patterns[] = sprintf('/(?<!%1$s)(?:%2$s)(?!%1$s)/%3$s', self::WORD_CHAR, $alternation, $flags);
         }
+    }
+
+    /**
+     * The names a key shares with other keys, which aren't matched for any of
+     * them, with the other keys that claim each.
+     *
+     * @return array<string, int[]> The name as this key gives it => the other keys
+     */
+    public function sharedNames(int $key): array
+    {
+        $found = [];
+        foreach ($this->shared as $byKey) {
+            if (isset($byKey[$key])) {
+                $found[$byKey[$key]] = array_values(array_diff(array_keys($byKey), [$key]));
+            }
+        }
+        return $found;
     }
 
     public function isEmpty(): bool

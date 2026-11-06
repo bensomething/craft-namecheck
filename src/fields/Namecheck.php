@@ -4,9 +4,11 @@ namespace bensomething\namecheck\fields;
 
 use bensomething\namecheck\enums\Mode;
 use bensomething\namecheck\models\NamecheckValue;
+use bensomething\namecheck\Plugin;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\elements\Entry;
 use craft\helpers\Json;
 use yii\db\Schema;
 
@@ -94,7 +96,40 @@ class Namecheck extends Field
             'name' => $this->handle,
             'value' => $value,
             'modes' => Mode::cases(),
+            'sharedNamesWarning' => $this->_sharedNamesWarning($element),
         ]);
+    }
+
+    /**
+     * A warning for the names this entry shares with other linked entries,
+     * which aren't linked to any of them, as of its last save.
+     */
+    private function _sharedNamesWarning(?ElementInterface $element): ?string
+    {
+        $names = Plugin::getInstance()->getNames();
+        if (!$element instanceof Entry || !$names->isTarget($element)) {
+            return null;
+        }
+
+        $lines = [];
+        foreach ($names->sharedNames($element) as $name => $others) {
+            $links = array_map(function(Entry $other) {
+                $label = $this->_escapeMarkdown($other->getUiLabel());
+                $url = $other->getCpEditUrl();
+                return $url ? "[$label]($url)" : $label;
+            }, $others);
+            $lines[] = Craft::t('namecheck', '**{name}** is also a name of {entries}, so it won’t be linked.', [
+                'name' => $this->_escapeMarkdown($name),
+                'entries' => implode(', ', $links),
+            ]);
+        }
+
+        return $lines === [] ? null : implode(' ', $lines);
+    }
+
+    private function _escapeMarkdown(string $text): string
+    {
+        return addcslashes($text, '\\`*_[]()<>#!');
     }
 
     protected function searchKeywords(mixed $value, ElementInterface $element): string

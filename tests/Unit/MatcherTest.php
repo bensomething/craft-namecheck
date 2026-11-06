@@ -61,6 +61,34 @@ class MatcherTest extends TestCase
         $this->assertSame([1], $this->keys($matcher, 'Khruangbin, aka KB'));
     }
 
+    public function testListsSharedNamesWithTheOtherKeys(): void
+    {
+        $matcher = new Matcher([1 => ['Khruangbin', 'KB'], 2 => ['Khruangbin', 'Air'], 3 => ['khruangbin', 'air'], 4 => ['311']]);
+
+        $this->assertSame(['Khruangbin' => [2]], $matcher->sharedNames(1));
+        $this->assertSame(['Khruangbin' => [1]], $matcher->sharedNames(2));
+        $this->assertSame([], $matcher->sharedNames(3));
+        $this->assertSame([], $matcher->sharedNames(4));
+        $this->assertSame([], $matcher->sharedNames(99));
+    }
+
+    public function testSharedNamesFollowCaseSensitivity(): void
+    {
+        $matcher = new Matcher([1 => ['Air'], 2 => ['air']], false);
+
+        $this->assertSame(['Air' => [2]], $matcher->sharedNames(1));
+        $this->assertSame(['air' => [1]], $matcher->sharedNames(2));
+        $this->assertSame([], $this->keys($matcher, 'Air on air'));
+    }
+
+    public function testANameRepeatedByOneKeyIsNotShared(): void
+    {
+        $matcher = new Matcher([1 => ['Pulp', 'Pulp']]);
+
+        $this->assertSame([], $matcher->sharedNames(1));
+        $this->assertSame([1], $this->keys($matcher, 'Pulp'));
+    }
+
     public function testOffsetsAreBytes(): void
     {
         $matches = (new Matcher([1 => ['Björk']]))->find('Héllo Björk');

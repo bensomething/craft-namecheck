@@ -80,7 +80,7 @@ Some names are everyday words: Air, Wednesday, Boston, Sparks. For these, add a 
   - **Never**.
 - **Other Names**: anything else the entry is known as, one per line, such as "Beatles" for "The Beatles". These are matched as well as the title.
 
-Entries without the field are linked wherever they're mentioned. Curly and straight apostrophes match each other, as do ordinary and non-breaking spaces. A name shared by two entries is ambiguous, so it isn't linked to either.
+Entries without the field are linked wherever they're mentioned. Curly and straight apostrophes match each other, as do ordinary and non-breaking spaces. A name shared by two entries is ambiguous, so it isn't linked to either. Disabled and pending entries count, and the Namecheck field warns about any names its entry shares.
 
 ## Mentions
 

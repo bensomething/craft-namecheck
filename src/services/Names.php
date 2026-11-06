@@ -55,6 +55,37 @@ class Names extends Component
     }
 
     /**
+     * The names an entry shares with other linked entries, with those entries.
+     * A shared name isn't linked to any of them. Entries that are disabled or
+     * not yet live still claim their names.
+     *
+     * @return array<string, Entry[]> The name as this entry gives it => the other entries
+     */
+    public function sharedNames(Entry $entry): array
+    {
+        $shared = $this->getMatcher($entry->siteId)->sharedNames($entry->getCanonicalId());
+        if ($shared === []) {
+            return [];
+        }
+
+        $others = Entry::find()
+            ->id(array_values(array_unique(array_merge(...array_values($shared)))))
+            ->siteId($entry->siteId)
+            ->status(null)
+            ->indexBy('id')
+            ->all();
+
+        $found = [];
+        foreach ($shared as $name => $ids) {
+            $entries = array_values(array_filter(array_map(fn(int $id) => $others[$id] ?? null, $ids)));
+            if ($entries !== []) {
+                $found[(string)$name] = $entries;
+            }
+        }
+        return $found;
+    }
+
+    /**
      * Finds the entries that go by each of the given names, by title or other
      * name, ignoring case. Each name must match in full, so this suits lists
      * where every item is a name, such as a line-up. Entries set to never be
