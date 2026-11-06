@@ -40,6 +40,8 @@ Run any HTML through the `namecheck` filter, passing the entry it belongs to:
 
 The text is searched for entry titles as whole words, so "Air" is found in "Air played" but not in "Airline". Longer names win, so "Pulp Fiction" is linked rather than "Pulp" inside it. An entry is never linked to itself, and existing links, headings, captions, code and form controls are left alone.
 
+For text that doesn't belong to an entry, such as a footer in a global set, leave the entry out: `{{ footer.text|namecheck }}`. Names are then linked for the current site, but entries set to **Only where it's related** never are, since there's no entry to check their relations against. To give options without an entry, pass `null` in its place: `|namecheck(null, { limit: 3 })`.
+
 The filter takes options as a third argument:
 
 ```twig
