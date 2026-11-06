@@ -5,7 +5,7 @@
 ### Changed
 
 - The Namecheck field groups **Link This Entry** and **Other Names** in a box under the field's label, side by side, so their labels no longer stack under it.
-- The Namecheck field's icon is now a speech bubble with a checkmark.
+- The plugin and Namecheck field icons are now a speech bubble with a checkmark.
 - Shorter instructions for the **Track Mentions In** and **Match Case** settings.
 
 ### Fixed
