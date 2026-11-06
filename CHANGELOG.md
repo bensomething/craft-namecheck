@@ -1,6 +1,6 @@
 # Release Notes for Namecheck
 
-## Unreleased
+## 1.0.0-beta.4 - 2026-11-06
 
 ### Added
 
