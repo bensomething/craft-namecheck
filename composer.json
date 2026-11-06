@@ -8,10 +8,14 @@
         "cms",
         "craftcms",
         "plugin",
-        "links",
+        "internal links",
         "autolink",
+        "auto link",
         "mentions",
-        "internal links"
+        "backlinks",
+        "cross-linking",
+        "related content",
+        "linking"
     ],
     "support": {
         "issues": "https://github.com/bensomething/craft-namecheck/issues",
