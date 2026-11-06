@@ -1,3 +1,5 @@
+<img src="src/icon.svg" width="96" alt="Namecheck">
+
 # Namecheck for Craft CMS
 
 Link the names of your entries wherever your content mentions them.
