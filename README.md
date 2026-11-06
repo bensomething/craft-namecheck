@@ -96,7 +96,7 @@ With **Track Mentions In** set, each entry in those sections is checked for ment
 
 Both return an entry query, so narrow and order them like any other.
 
-In the control panel, a linked entry's sidebar lists the entries that mention it under **Mentioned In**, with the fields they mention it in.
+In the control panel, a linked entry's sidebar lists the entries that mention it under **Mentioned In**, with the fields they mention it in. Entry indexes can also show a sortable **Mentioned In** column with how many entries mention each one, which is handy for finding the entries nothing mentions.
 
 When a linked entry is added or renamed, or its other names change, mentions are updated in the queue. Changing the plugin's settings does the same, whether in the control panel or through project config. To rebuild them by hand:
 

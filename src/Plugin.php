@@ -2,6 +2,7 @@
 
 namespace bensomething\namecheck;
 
+use bensomething\namecheck\behaviors\MentionCountBehavior;
 use bensomething\namecheck\fields\Namecheck as NamecheckField;
 use bensomething\namecheck\jobs\RebuildMentions;
 use bensomething\namecheck\models\Settings;
@@ -13,12 +14,18 @@ use bensomething\namecheck\variables\NamecheckVariable;
 use Craft;
 use craft\base\Element;
 use craft\base\Model;
+use craft\db\Connection;
 use craft\elements\Entry;
 use craft\events\ConfigEvent;
+use craft\events\DefineAttributeHtmlEvent;
+use craft\events\DefineBehaviorsEvent;
 use craft\events\DefineHtmlEvent;
 use craft\events\ElementEvent;
+use craft\events\ElementIndexTableAttributeEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterElementSortOptionsEvent;
+use craft\events\RegisterElementTableAttributesEvent;
 use craft\helpers\ElementHelper;
 use craft\helpers\Html;
 use craft\helpers\Queue;
@@ -28,6 +35,7 @@ use craft\services\ProjectConfig;
 use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use yii\base\Event;
+use yii\db\Expression;
 
 /**
  * Namecheck: links the names of your entries wherever your content mentions
@@ -137,6 +145,8 @@ class Plugin extends \craft\base\Plugin
             }
         );
 
+        $this->_registerMentionedInColumn();
+
         // Settings changed by `project-config/apply` never reach afterSaveSettings().
         $settingsPath = ProjectConfig::PATH_PLUGINS . '.' . $this->handle . '.settings';
         $onSettingsChanged = function(ConfigEvent $event) {
@@ -177,6 +187,85 @@ class Plugin extends \craft\base\Plugin
         parent::afterSaveSettings();
         $this->getNames()->invalidate();
         $this->queueRebuild();
+    }
+
+    /**
+     * A sortable Mentioned In column for entry indexes: how many entries
+     * mention each one. The count is selected with the index's query rather
+     * than fetched per row, and left blank outside the Link To sections.
+     */
+    private function _registerMentionedInColumn(): void
+    {
+        $attribute = 'namecheckMentionedIn';
+        $tracking = fn() => $this->getSettings()->sourceSections !== [];
+
+        Event::on(
+            Entry::class,
+            Model::EVENT_DEFINE_BEHAVIORS,
+            static function(DefineBehaviorsEvent $event) {
+                $event->behaviors['namecheckMentionCount'] = MentionCountBehavior::class;
+            }
+        );
+
+        Event::on(
+            Entry::class,
+            Element::EVENT_REGISTER_TABLE_ATTRIBUTES,
+            function(RegisterElementTableAttributesEvent $event) use ($attribute, $tracking) {
+                if ($tracking()) {
+                    $event->tableAttributes[$attribute] = ['label' => Craft::t('namecheck', 'Mentioned In')];
+                }
+            }
+        );
+
+        Event::on(
+            Entry::class,
+            Element::EVENT_REGISTER_SORT_OPTIONS,
+            function(RegisterElementSortOptionsEvent $event) use ($attribute, $tracking) {
+                if (!$tracking()) {
+                    return;
+                }
+                $event->sortOptions[] = [
+                    'label' => Craft::t('namecheck', 'Mentioned In'),
+                    'attribute' => $attribute,
+                    'defaultDir' => 'desc',
+                    'orderBy' => function(int $dir, Connection $db) {
+                        [$sql, $params] = $db->getQueryBuilder()->build($this->getMentions()->countQuery());
+                        return new Expression(sprintf('(%s) %s', $sql, $dir === SORT_ASC ? 'ASC' : 'DESC'), $params);
+                    },
+                ];
+            }
+        );
+
+        Event::on(
+            Entry::class,
+            Element::EVENT_PREP_QUERY_FOR_TABLE_ATTRIBUTE,
+            function(ElementIndexTableAttributeEvent $event) use ($attribute) {
+                if ($event->attribute === $attribute) {
+                    $event->query->addSelect([$attribute => $this->getMentions()->countQuery()]);
+                    $event->handled = true;
+                }
+            }
+        );
+
+        Event::on(
+            Entry::class,
+            Element::EVENT_DEFINE_ATTRIBUTE_HTML,
+            function(DefineAttributeHtmlEvent $event) use ($attribute) {
+                if ($event->attribute !== $attribute) {
+                    return;
+                }
+                /** @var Entry $entry */
+                $entry = $event->sender;
+                if (!$this->getNames()->isTarget($entry)) {
+                    $event->html = '';
+                    return;
+                }
+                $behavior = $entry->getBehavior('namecheckMentionCount');
+                $count = ($behavior instanceof MentionCountBehavior ? $behavior->namecheckMentionedIn : null)
+                    ?? $this->getMentions()->mentionedIn($entry)->status(null)->count();
+                $event->html = Craft::$app->getFormatter()->asInteger($count);
+            }
+        );
     }
 
     /**

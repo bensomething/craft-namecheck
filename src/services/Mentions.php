@@ -11,6 +11,7 @@ use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
 use craft\base\FieldInterface;
 use craft\db\Query;
+use craft\db\Table;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\ElementCollection;
@@ -18,6 +19,7 @@ use craft\elements\Entry;
 use craft\fields\BaseRelationField;
 use craft\helpers\Db;
 use craft\helpers\Json;
+use yii\db\Expression;
 
 /**
  * Keeps track of which entries mention which, so each side can list the other.
@@ -172,6 +174,22 @@ class Mentions extends Component
         return Entry::find()
             ->siteId($target->siteId)
             ->andWhere(['elements.id' => $sourceIds]);
+    }
+
+    /**
+     * How many entries mention each entry in an element query, as a subquery
+     * that refers to the outer query's `elements` and `elements_sites`, for
+     * selecting and sorting by. Trashed sources don't count.
+     */
+    public function countQuery(): Query
+    {
+        return (new Query())
+            ->select(new Expression('COUNT(*)'))
+            ->from(['nc_m' => self::TABLE])
+            ->innerJoin(['nc_e' => Table::ELEMENTS], '[[nc_e.id]] = [[nc_m.sourceId]]')
+            ->where('[[nc_m.targetId]] = [[elements.id]]')
+            ->andWhere('[[nc_m.sourceSiteId]] = [[elements_sites.siteId]]')
+            ->andWhere(['nc_e.dateDeleted' => null]);
     }
 
     /**
