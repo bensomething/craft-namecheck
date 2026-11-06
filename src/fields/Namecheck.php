@@ -111,15 +111,31 @@ class Namecheck extends Field
             return null;
         }
 
+        return self::sharedNamesWarning(array_map(
+            fn(array $others) => array_map(fn(Entry $other) => [
+                'label' => $other->getUiLabel(),
+                'url' => $other->getCpEditUrl(),
+            ], $others),
+            $names->sharedNames($element),
+        ));
+    }
+
+    /**
+     * The Markdown for the shared names warning: each name, with links to the
+     * other entries that go by it.
+     *
+     * @param array<string, array<array{label: string, url: ?string}>> $shared Name => the other entries
+     */
+    public static function sharedNamesWarning(array $shared): ?string
+    {
         $lines = [];
-        foreach ($names->sharedNames($element) as $name => $others) {
-            $links = array_map(function(Entry $other) {
-                $label = $this->_escapeMarkdown($other->getUiLabel());
-                $url = $other->getCpEditUrl();
-                return $url ? "[$label]($url)" : $label;
+        foreach ($shared as $name => $others) {
+            $links = array_map(function(array $other) {
+                $label = self::escapeMarkdown($other['label']);
+                return $other['url'] ? "[$label]({$other['url']})" : $label;
             }, $others);
             $lines[] = Craft::t('namecheck', '**{name}** is also a name of {entries}, so it won’t be linked.', [
-                'name' => $this->_escapeMarkdown($name),
+                'name' => self::escapeMarkdown((string)$name),
                 'entries' => implode(', ', $links),
             ]);
         }
@@ -127,7 +143,10 @@ class Namecheck extends Field
         return $lines === [] ? null : implode(' ', $lines);
     }
 
-    private function _escapeMarkdown(string $text): string
+    /**
+     * Escapes the characters Markdown would read as formatting or links.
+     */
+    public static function escapeMarkdown(string $text): string
     {
         return addcslashes($text, '\\`*_[]()<>#!');
     }

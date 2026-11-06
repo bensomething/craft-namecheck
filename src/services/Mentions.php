@@ -77,12 +77,7 @@ class Mentions extends Component
             return [];
         }
 
-        $ids = [];
-        foreach ($this->_texts($element) as $handle => $text) {
-            foreach ($matcher->find($text) as $match) {
-                $ids[$match['key']][$handle] = true;
-            }
-        }
+        $ids = $matcher->findInPieces($this->_texts($element));
         unset($ids[$element->getCanonicalId()]);
 
         $relatedOnly = array_keys(array_filter(
@@ -96,7 +91,7 @@ class Mentions extends Component
             }
         }
 
-        return array_map(fn(array $handles) => array_map('strval', array_keys($handles)), $ids);
+        return $ids;
     }
 
     /**

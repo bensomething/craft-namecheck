@@ -118,6 +118,24 @@ class Matcher
     }
 
     /**
+     * Finds the keys mentioned in several pieces of text, such as an entry's
+     * fields, with the pieces each was mentioned in.
+     *
+     * @param array<string, string> $texts Piece name (such as a field handle) => its text
+     * @return array<int, string[]> Key => the names of the pieces it's mentioned in, in order
+     */
+    public function findInPieces(array $texts): array
+    {
+        $found = [];
+        foreach ($texts as $piece => $text) {
+            foreach ($this->find($text) as $match) {
+                $found[$match['key']][(string)$piece] = true;
+            }
+        }
+        return array_map(fn(array $pieces) => array_map('strval', array_keys($pieces)), $found);
+    }
+
+    /**
      * Returns every mention in the text, in order, without overlaps.
      *
      * @return array<int, array{offset: int, length: int, key: int, text: string}>

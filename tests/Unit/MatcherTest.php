@@ -61,6 +61,30 @@ class MatcherTest extends TestCase
         $this->assertSame([1], $this->keys($matcher, 'Khruangbin, aka KB'));
     }
 
+    public function testFindsWhichPiecesEachKeyIsMentionedIn(): void
+    {
+        $matcher = new Matcher([1 => ['Pulp'], 2 => ['Air'], 3 => ['Blur']]);
+
+        $this->assertSame([
+            1 => ['title', 'body'],
+            2 => ['body', 'matrix'],
+        ], $matcher->findInPieces([
+            'title' => 'Pulp at the Pyramid',
+            'body' => 'Pulp, then Air. Pulp again.',
+            'matrix' => 'Air',
+            'summary' => '',
+        ]));
+    }
+
+    public function testFindInPiecesSkipsSharedNamesAndCanFindNothing(): void
+    {
+        $matcher = new Matcher([1 => ['Khruangbin'], 2 => ['Khruangbin', 'KB']]);
+
+        $this->assertSame([2 => ['body']], $matcher->findInPieces(['title' => 'Khruangbin', 'body' => 'KB']));
+        $this->assertSame([], $matcher->findInPieces([]));
+        $this->assertSame([], (new Matcher([]))->findInPieces(['body' => 'Khruangbin']));
+    }
+
     public function testListsSharedNamesWithTheOtherKeys(): void
     {
         $matcher = new Matcher([1 => ['Khruangbin', 'KB'], 2 => ['Khruangbin', 'Air'], 3 => ['khruangbin', 'air'], 4 => ['311']]);
