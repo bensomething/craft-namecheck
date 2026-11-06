@@ -6,6 +6,7 @@
 
 - The Namecheck field's **Link This Entry** and **Other Names** now sit side by side.
 - New plugin and field icon.
+- Mentions are rebuilt when the plugin's settings change through project config.
 
 ## 1.0.0-beta.3 - 2026-10-28
 

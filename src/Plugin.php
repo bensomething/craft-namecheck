@@ -12,6 +12,7 @@ use bensomething\namecheck\twig\Extension;
 use bensomething\namecheck\variables\NamecheckVariable;
 use Craft;
 use craft\base\Model;
+use craft\events\ConfigEvent;
 use craft\events\ElementEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
@@ -19,6 +20,7 @@ use craft\helpers\ElementHelper;
 use craft\helpers\Queue;
 use craft\services\Elements;
 use craft\services\Fields;
+use craft\services\ProjectConfig;
 use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use yii\base\Event;
@@ -114,6 +116,17 @@ class Plugin extends \craft\base\Plugin
                 ];
             }
         );
+
+        // Settings changed by `project-config/apply` never reach afterSaveSettings().
+        $settingsPath = ProjectConfig::PATH_PLUGINS . '.' . $this->handle . '.settings';
+        $onSettingsChanged = function(ConfigEvent $event) {
+            $this->setSettings((array)($event->newValue ?? []));
+            $this->getNames()->invalidate();
+            $this->queueRebuild();
+        };
+        Craft::$app->getProjectConfig()
+            ->onAdd($settingsPath, $onSettingsChanged)
+            ->onUpdate($settingsPath, $onSettingsChanged);
     }
 
     public function setSettings(array $settings): void

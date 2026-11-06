@@ -94,7 +94,7 @@ With **Track Mentions In** set, each entry in those sections is checked for ment
 
 Both return an entry query, so narrow and order them like any other.
 
-When a linked entry is added or renamed, or its other names change, mentions are updated in the queue. Changing the plugin's settings in the control panel does the same. After changing them through project config, rebuild them yourself:
+When a linked entry is added or renamed, or its other names change, mentions are updated in the queue. Changing the plugin's settings does the same, whether in the control panel or through project config. To rebuild them by hand:
 
 ```bash
 php craft namecheck/mentions/rebuild
