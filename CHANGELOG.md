@@ -4,7 +4,7 @@
 
 ### Added
 
-- A **Mentioned In** panel in a linked entry's sidebar, listing the entries that mention it and the fields they mention it in.
+- A **Mentioned In** panel in a linked entry's sidebar, listing the entries that mention it and the fields it's mentioned in.
 - The Namecheck field warns when its entry shares a name with another linked entry, since a shared name isn't linked to either.
 
 ### Changed
