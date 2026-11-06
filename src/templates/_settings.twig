@@ -1,5 +1,7 @@
 {% import '_includes/forms.twig' as forms %}
 
+{# Wrapper so the first field is :first-child; Craft renders hidden inputs before settingsHtml. #}
+<div>
 {{ forms.checkboxSelectField({
     label: 'Link To'|t('namecheck'),
     instructions: 'Entries in these sections are linked wherever they’re mentioned. Add a Namecheck field to their entry types to give an entry other names, or to link it only where it’s related.'|t('namecheck'),
@@ -11,7 +13,7 @@
 
 {{ forms.checkboxSelectField({
     label: 'Track Mentions In'|t('namecheck'),
-    instructions: 'Entries in these sections are checked for mentions when they’re saved, so `craft.namecheck.mentionedIn()` can list them. Changing this updates every entry in the queue.'|t('namecheck'),
+    instructions: 'Entries in these sections are checked for mentions when they’re saved. Changing this updates every entry in the queue.'|t('namecheck'),
     id: 'sourceSections',
     name: 'sourceSections',
     options: sections,
@@ -28,8 +30,9 @@
 
 {{ forms.lightswitchField({
     label: 'Match Case'|t('namecheck'),
-    instructions: 'Match names only as they’re capitalised, so “Pulp” isn’t found in “pulp”. Recommended.'|t('namecheck'),
+    instructions: 'Match names only as they’re capitalised. Recommended.'|t('namecheck'),
     id: 'caseSensitive',
     name: 'caseSensitive',
     on: settings.caseSensitive,
 }) }}
+</div>

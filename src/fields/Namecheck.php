@@ -24,7 +24,12 @@ class Namecheck extends Field
 
     public static function icon(): string
     {
-        return 'wand';
+        return 'comment-check';
+    }
+
+    public function useFieldset(): bool
+    {
+        return true;
     }
 
     public static function phpType(): string
